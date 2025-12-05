@@ -140,18 +140,21 @@ if analyze_btn and query and selected_models:
         analyzed_results = []
         progress_bar = st.progress(0)
         
-    # 2. Crawl & Analyze (Multithreaded)
+        # 2. Crawl & Analyze (Multithreaded)
         import concurrent.futures
         
+        # Track errors
+        errors = []
+
         def process_single_article(item, analyzer, selected_models):
+            url = item.get('link')
             try:
-                url = item.get('link')
                 pub_date = item.get('date')
                 
                 # Scrape
                 article = get_article_content(url)
                 if not article or not article.get('text'):
-                    return None
+                    return {"error": f"Scraping failed or empty content for {url}"}
                 
                 # Analyze with Ensemble
                 sentiment_result = analyzer.predict(article['text'], model_names=selected_models)
@@ -180,20 +183,32 @@ if analyze_btn and query and selected_models:
                     "Markers": markers,
                     "Details": sentiment_result['details']
                 }
-            except Exception:
-                return None
+            except Exception as e:
+                return {"error": f"Error processing {url}: {str(e)}"}
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # Reduce max_workers for Cloud stability (1GB RAM limit)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             future_to_url = {executor.submit(process_single_article, item, analyzer, selected_models): item for item in results_data}
             
             for i, future in enumerate(concurrent.futures.as_completed(future_to_url)):
                 status.update(label=f"Processing article {i+1}/{len(results_data)}...", state="running")
                 result = future.result()
                 if result:
-                    analyzed_results.append(result)
+                    if "error" in result:
+                        errors.append(result["error"])
+                    else:
+                        analyzed_results.append(result)
                 progress_bar.progress((i + 1) / len(results_data))
             
         status.update(label="Analysis Complete!", state="complete", expanded=False)
+        
+        if errors and not analyzed_results:
+            st.error("All articles failed to process. Common reasons:")
+            st.markdown("- **Scraping Blocked**: News sites often block cloud server IPs.")
+            st.markdown("- **Empty Content**: The scraper couldn't extract text.")
+            with st.expander("View Error Log"):
+                for err in errors:
+                    st.write(err)
 
     # 3. Display Results
     if analyzed_results:
