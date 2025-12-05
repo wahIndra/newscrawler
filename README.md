@@ -1,5 +1,7 @@
 # Indonesian News Sentiment Analyzer v3.0
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://newscrawler-indon.streamlit.app/)
+
 A powerful, AI-powered Streamlit application that crawls news, analyzes sentiment using advanced ensemble models, and provides analyst-style insights with trend forecasting.
 
 ![App Screenshot](https://github.com/wahIndra/newscrawler/blob/main/assets/app_screenshot.png?raw=true)
@@ -61,6 +63,12 @@ A powerful, AI-powered Streamlit application that crawls news, analyzes sentimen
     *   **Settings**: Adjust date range and article limit.
 
 4.  **Analyze**: Click "Analyze Sentiment" to see results, trends, and forecasts.
+
+## Live Demo
+
+The application is deployed and available online!
+
+👉 **[Try the Live App](https://newscrawler-indon.streamlit.app/)**
 
 ## Project Structure
 
