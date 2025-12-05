@@ -1,0 +1,10 @@
+streamlit
+transformers
+torch
+newspaper3k
+feedparser
+pandas
+lxml_html_clean
+GoogleNews
+scikit-learn
+sentencepiece
