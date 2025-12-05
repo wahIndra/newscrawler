@@ -140,50 +140,58 @@ if analyze_btn and query and selected_models:
         analyzed_results = []
         progress_bar = st.progress(0)
         
-        # 2. Crawl & Analyze
-        for i, item in enumerate(results_data):
-            status.update(label=f"Processing article {i+1}/{len(results_data)}...", state="running")
-            
-            url = item.get('link')
-            pub_date = item.get('date')
-            
+    # 2. Crawl & Analyze (Multithreaded)
+        import concurrent.futures
+        
+        def process_single_article(item, analyzer, selected_models):
             try:
+                url = item.get('link')
+                pub_date = item.get('date')
+                
                 # Scrape
                 article = get_article_content(url)
-                if article and article.get('text'):
-                    # Analyze with Ensemble
-                    sentiment_result = analyzer.predict(article['text'], model_names=selected_models)
-                    
-                    # Generate Explanation
-                    explanation = analyzer.explain_sentiment(sentiment_result['label'], sentiment_result['score'], article['text'])
-                    
-                    # Get Markers
-                    markers = analyzer.get_sentiment_markers(article['text'])
-                    
-                    # Parse date
-                    parsed_date = None
-                    if pub_date:
-                        parsed_date = parse_date(pub_date)
-                    if not parsed_date:
-                         parsed_date = datetime.datetime.now()
+                if not article or not article.get('text'):
+                    return None
+                
+                # Analyze with Ensemble
+                sentiment_result = analyzer.predict(article['text'], model_names=selected_models)
+                
+                # Generate Explanation
+                explanation = analyzer.explain_sentiment(sentiment_result['label'], sentiment_result['score'], article['text'])
+                
+                # Get Markers
+                markers = analyzer.get_sentiment_markers(article['text'])
+                
+                # Parse date
+                parsed_date = None
+                if pub_date:
+                    parsed_date = parse_date(pub_date)
+                if not parsed_date:
+                        parsed_date = datetime.datetime.now()
 
-                    analyzed_results.append({
-                        "Title": article['title'],
-                        "Sentiment": sentiment_result['label'],
-                        "Score": sentiment_result['score'],
-                        "URL": url,
-                        "Text": article['text'],
-                        "Date": parsed_date,
-                        "Explanation": explanation,
-                        "Markers": markers,
-                        "Details": sentiment_result['details']
-                    })
-                else:
-                    pass # Skipped
-            except Exception as e:
-                pass
+                return {
+                    "Title": article['title'],
+                    "Sentiment": sentiment_result['label'],
+                    "Score": sentiment_result['score'],
+                    "URL": url,
+                    "Text": article['text'],
+                    "Date": parsed_date,
+                    "Explanation": explanation,
+                    "Markers": markers,
+                    "Details": sentiment_result['details']
+                }
+            except Exception:
+                return None
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_url = {executor.submit(process_single_article, item, analyzer, selected_models): item for item in results_data}
             
-            progress_bar.progress((i + 1) / len(results_data))
+            for i, future in enumerate(concurrent.futures.as_completed(future_to_url)):
+                status.update(label=f"Processing article {i+1}/{len(results_data)}...", state="running")
+                result = future.result()
+                if result:
+                    analyzed_results.append(result)
+                progress_bar.progress((i + 1) / len(results_data))
             
         status.update(label="Analysis Complete!", state="complete", expanded=False)
 
@@ -274,10 +282,12 @@ if analyze_btn and query and selected_models:
                     markers = row['Markers']
                     if markers['positive'] or markers['negative']:
                         st.markdown("**Key Indicators:**")
+                        marker_html = ""
                         for m in markers['positive']:
-                            st.markdown(f"<span class='marker-pos'>{m}</span>", unsafe_allow_html=True)
+                            marker_html += f"<span class='marker-pos'>{m}</span> "
                         for m in markers['negative']:
-                            st.markdown(f"<span class='marker-neg'>{m}</span>", unsafe_allow_html=True)
+                            marker_html += f"<span class='marker-neg'>{m}</span> "
+                        st.markdown(marker_html, unsafe_allow_html=True)
                     
                     st.markdown(f"**Snippet:** _{row['Text'][:300]}..._")
                     st.markdown(f"[Read Full Article]({row['URL']})")

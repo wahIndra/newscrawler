@@ -14,6 +14,8 @@ A powerful, AI-powered Streamlit application that crawls news, analyzes sentimen
     *   **Automated Explanations**: Generates "Analyst Notes" explaining *why* a sentiment was chosen.
     *   **Sentiment Markers**: Highlights positive/negative keywords (including **slang** like *cuan, mantul*) in the text.
     *   **Massive Keyword Library**: Over **2000+ keywords** for robust detection across formal and informal text.
+*   **High Performance**:
+    *   **Multithreaded Analysis**: Processes multiple articles simultaneously for rapid results.
 *   **Trend Forecasting**:
     *   **3-Month Forecast**: Projects sentiment trends 90 days into the future using linear regression.
 *   **Smart Search**:
